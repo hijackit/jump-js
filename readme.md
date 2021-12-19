@@ -9,14 +9,16 @@ Current features are:
 - iced platforms
 - reach the top to go to the next level
 - the highest the level, the more iced platforms
+- lava platforms (not deadly yet)
 
 ![screenshot](./jump-js.gif)
 
 [Live demo!](https://hijackit.github.io/jump-js/)
 
 ## Ideas
-A few ideas for next iterations:
-- create a goal (eg. reach the top of the screen -> goto next level)
-- display the current level
-- "sprint" with double tap (e.g. pressing the right button 2 times)
-- shooting
+Ideas for next iterations:
+- deadly lava platforms
+- moving platforms
+- falling rocks
+- moving enemies on platforms
+- shoot at enemies
