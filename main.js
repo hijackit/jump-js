@@ -55,12 +55,14 @@ function generatePlatforms() {
     let partialHeight = totalHeight / 5;
     let height = getRandomInt(50, partialHeight) + i * partialHeight;
     let iced = getRandomInt(0, 5) < level;
+    let lava = getRandomInt(0, 5) < level && !iced;
     let platform = {
       x1: x1,
       x2: x1 + width,
       y: GROUND + height,
       friction: iced ? 0.995 : 0.8,
       iced: iced,
+      lava: lava,
     };
     platforms.push(platform);
   }
@@ -205,21 +207,28 @@ function render(currentTimestamp) {
     horizontalVelocity = -horizontalVelocity;
   }
 
-  ctx.fillStyle = "black";
+  ctx.fillStyle = currentPlatform && currentPlatform.lava ? "#380000" : "black";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // cube
+  // cube rect
   ctx.beginPath();
-  ctx.lineWidth = "2";
+  ctx.lineWidth = 2;
   ctx.strokeStyle = "white";
   ctx.beginPath();
   ctx.rect(x-15, canvas.height-y-30, 30, 30);
   ctx.stroke();
 
+  // fill the cube
+  ctx.beginPath();
+  ctx.fillStyle = 'green';
+  ctx.fillRect(x-14, canvas.height-y-28, 28, 28);
+
+  // draw the platforms
   platforms.forEach((platform) => {
     ctx.beginPath();
     ctx.lineWidth = "2";
     ctx.strokeStyle = platform.iced ? "#64c9f9" : "white";
+    ctx.strokeStyle = platform.lava ? "red" : ctx.strokeStyle;
     ctx.moveTo(platform.x1, canvas.height - platform.y);
     ctx.lineTo(platform.x2, canvas.height - platform.y);
     ctx.stroke();
