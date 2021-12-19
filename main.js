@@ -180,8 +180,8 @@ function render(currentTimestamp) {
   ctx.beginPath();
   ctx.lineWidth = "2";
   ctx.strokeStyle = "white";
-  
-  0
+  ctx.beginPath();
+  ctx.rect(x-20, canvas.height-y-40, 40, 40);
   ctx.stroke();
 
   platforms.forEach((platform) => {
