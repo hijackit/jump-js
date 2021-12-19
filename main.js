@@ -10,7 +10,7 @@ let ctx = canvas.getContext('2d');
 canvas.width = window.innerWidth
 canvas.height = window.innerHeight
 
-let verticalAcceleration = 0;
+let verticalVelocity = 0;
 let horizontalVelocity = 0;
 let gravity = 0.006;
 let friction = 0.85;
@@ -40,7 +40,8 @@ function generatePlatforms() {
     x1: 0,
     x2: canvas.width,
     y: GROUND,
-    friction: 0.5
+    friction: 0.5,
+    thickness: 2,
   });
 
   // flying platforms
@@ -63,6 +64,7 @@ function generatePlatforms() {
       friction: iced ? 0.995 : 0.8,
       iced: iced,
       lava: lava,
+      thickness: 4,
     };
     platforms.push(platform);
   }
@@ -94,7 +96,7 @@ function onKeydown(e) {
   // UP
   if(e.keyCode  === 38) {
     if (jumps < 2) {
-      verticalAcceleration = -1.2;
+      verticalVelocity = -1.2;
       jumps++;
     }
   } 
@@ -164,13 +166,13 @@ function render(currentTimestamp) {
   // stop if the h-acceleration is under a certain threshold
   if (Math.abs(horizontalVelocity) < 0.001) horizontalVelocity = 0;
 
-  y -= verticalAcceleration * elapsed;
+  y -= verticalVelocity * elapsed;
 
-  // adjust acceleration for gravity
-  verticalAcceleration += gravity * elapsed;
+  // adjust velocity for gravity
+  verticalVelocity += gravity * elapsed;
 
   // stop if the v-acceleration is under a certain threshold
-  if (Math.abs(verticalAcceleration) < 0.001) verticalAcceleration = 0;
+  if (Math.abs(verticalVelocity) < 0.001) verticalVelocity = 0;
 
   
   if (stepDown) {
@@ -181,7 +183,7 @@ function render(currentTimestamp) {
   } else if (y <= targetPlatform.y) {
     // ground collision
     y = targetPlatform.y;
-    verticalAcceleration = 0;
+    verticalVelocity = 0;
     jumps = 0;
     currentPlatform = targetPlatform;
   } else {
@@ -226,7 +228,7 @@ function render(currentTimestamp) {
   // draw the platforms
   platforms.forEach((platform) => {
     ctx.beginPath();
-    ctx.lineWidth = "2";
+    ctx.lineWidth = platform.thickness;
     ctx.strokeStyle = platform.iced ? "#64c9f9" : "white";
     ctx.strokeStyle = platform.lava ? "red" : ctx.strokeStyle;
     ctx.moveTo(platform.x1, canvas.height - platform.y);
@@ -236,7 +238,8 @@ function render(currentTimestamp) {
 
   // update status panel
   status.innerHTML = 
-    "velocity: " +Math.round(horizontalVelocity*1000)/1000 + "<br/>" +
+    "h-velocity: " +Math.round(horizontalVelocity*1000)/1000 + "<br/>" +
+    "v-velocity: " +Math.round(verticalVelocity*1000)/1000 + "<br/>" +
     "x: " + Math.round(x) + "<br/> " + 
     "y: " + Math.round(y) + "<br/> " +
     "LEVEL: " + level + "<br/> ";
