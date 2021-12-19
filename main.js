@@ -3,17 +3,17 @@ console.log('hello jump-js')
 document.addEventListener("keydown", onKeydown, false);
 document.addEventListener("keyup", onKeyup, false);
 
+let status = document.getElementById('status');
+
 let canvas = document.getElementById('canvas')
 let ctx = canvas.getContext('2d');
 canvas.width = window.innerWidth
 canvas.height = window.innerHeight
 
 let verticalAcceleration = 0;
-let horizontalAcceleration = 0;
+let horizontalVelocity = 0;
 let gravity = 0.006;
-
-// without friction the cube will continue to move indefinitely
-let friction = 0.8;
+let friction = 0.85;
 
 let holdLeft = false;
 let holdRight = false;
@@ -39,7 +39,6 @@ for (let i=0; i<5; i++) {
   let candidate = lastX + distance;
   let x1 = Math.min(canvas.width-200, Math.max(0, candidate));
   lastX = x1;
-  // let x1 = getRandomInt(0, canvas.width-150);
   let width = getRandomInt(150, 350);
   let totalHeight = canvas.height - GROUND - 100;
   let partialHeight = totalHeight / 5;
@@ -69,14 +68,12 @@ function getRandomInt(min, max) {
 }
 
 function onKeydown(e) {
-  console.log(e.keyCode )
 
   // UP
   if(e.keyCode  === 38) {
     if (jumps < 2) {
       verticalAcceleration = -1.5;
       jumps++;
-      console.log("jumps", jumps)
     }
   } 
 
@@ -97,8 +94,6 @@ function onKeydown(e) {
 }
 
 function onKeyup(e) {
-  console.log(e.keyCode )
-
   // RIGHT
   if(e.keyCode  === 39) {
     holdRight = false;
@@ -118,21 +113,25 @@ function render(currentTimestamp) {
   lastTimestamp = currentTimestamp;
 
   if (holdRight) {
-    horizontalAcceleration = 0.5;
+    horizontalVelocity += 0.1;
+    horizontalVelocity = Math.min(horizontalVelocity, 0.8);
   }
 
   if (holdLeft) {
-    horizontalAcceleration = -0.5;
+    horizontalVelocity += -0.1;
+    horizontalVelocity = Math.max(horizontalVelocity, -0.8);
   }
 
-  x += horizontalAcceleration * elapsed;
-  horizontalAcceleration = horizontalAcceleration * friction;
+  if (!holdRight && !holdLeft) {
+    horizontalVelocity = horizontalVelocity * 0.9;
+  }
+
+  x += horizontalVelocity * elapsed;
 
   // stop if the h-acceleration is under a certain threshold
-  if (Math.abs(horizontalAcceleration) < 0.001) horizontalAcceleration = 0;
+  if (Math.abs(horizontalVelocity) < 0.001) horizontalVelocity = 0;
 
   let deltaV = verticalAcceleration * elapsed;
-  console.log("deltaV", deltaV)
   y -= verticalAcceleration * elapsed;
 
   // adjust acceleration for gravity
@@ -166,11 +165,11 @@ function render(currentTimestamp) {
   // border collisions
   if (x <= 0) {
     x = 0;
-    horizontalAcceleration = -horizontalAcceleration;
+    horizontalVelocity = -horizontalVelocity;
   }
   if (x >= canvas.width - 40) {
     x = canvas.width - 40;
-    horizontalAcceleration = -horizontalAcceleration;
+    horizontalVelocity = -horizontalVelocity;
   }
 
   ctx.fillStyle = "black";
@@ -181,7 +180,7 @@ function render(currentTimestamp) {
   ctx.lineWidth = "2";
   ctx.strokeStyle = "white";
   ctx.beginPath();
-  ctx.rect(x-20, canvas.height-y-40, 40, 40);
+  ctx.rect(x-15, canvas.height-y-30, 30, 30);
   ctx.stroke();
 
   platforms.forEach((platform) => {
@@ -192,6 +191,12 @@ function render(currentTimestamp) {
     ctx.lineTo(platform.x2, canvas.height - platform.y);
     ctx.stroke();
   });
+
+  // update status panel
+  status.innerHTML = 
+    "velocity: " +Math.round(horizontalVelocity*1000)/1000 + "<br/>" +
+    "x: " + Math.round(x) + "<br/> " + 
+    "y: " + Math.round(y) + "<br/> ";
 
   window.requestAnimationFrame(render);
 }
