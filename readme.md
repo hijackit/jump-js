@@ -6,6 +6,9 @@ Current features are:
 - double-jump
 - random platforms generation
 - "step-down" from a platform
+- iced platforms
+- reach the top to go to the next level
+- the highest the level, the more iced platforms
 
 ![screenshot](./jump-js.gif)
 
