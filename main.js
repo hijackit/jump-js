@@ -1,3 +1,5 @@
+import {generatePlatforms, PlatformType, renderPlatform} from './modules/platforms.js'
+
 console.log('hello jump-js')
 
 document.addEventListener("keydown", onKeydown, false);
@@ -13,13 +15,12 @@ canvas.height = window.innerHeight
 let verticalVelocity = 0;
 let horizontalVelocity = 0;
 let gravity = 0.006;
-let friction = 0.85;
 let level = 1;
 
 let holdLeft = false;
 let holdRight = false;
 
-const GROUND = 100;
+const GROUND = 50;
 
 // cube initial position
 let x = 200;
@@ -31,50 +32,8 @@ let jumps = 0;
 // the user wants to step down from the current platform
 let stepDown = false;
 
-function generatePlatforms() {
 
-  let platforms = [];
-  
-  // the first platform is the ground
-  platforms.push({
-    x1: 0,
-    x2: canvas.width,
-    y: GROUND,
-    friction: 0.5,
-    thickness: 2,
-  });
-
-  // flying platforms
-  let lastX = getRandomInt(250, canvas.width-250);
-  for (let i = 0; i < 5; i++) {
-    let distance = getRandomInt(-500, 500);
-    let candidate = lastX + distance;
-    let x1 = Math.min(canvas.width - 200, Math.max(0, candidate));
-    lastX = x1;
-    let width = getRandomInt(100, 250);
-    let totalHeight = canvas.height - GROUND - 100;
-    let partialHeight = totalHeight / 5;
-    let height = getRandomInt(50, partialHeight) + i * partialHeight;
-    let iced = getRandomInt(0, 5) < level;
-    let lava = getRandomInt(0, 5) < level && !iced;
-    let platform = {
-      x1: x1,
-      x2: x1 + width,
-      y: GROUND + height,
-      friction: iced ? 0.995 : 0.8,
-      iced: iced,
-      lava: lava,
-      thickness: 4,
-    };
-    platforms.push(platform);
-  }
-
-  // make sure platforms are ordered by height
-  platforms.sort((a, b) => a.y - b.y)
-  return platforms;
-}
-
-let platforms = generatePlatforms();
+let platforms = generatePlatforms(GROUND, canvas.width, canvas.height);
 
 // the platform currently walking on (null in air)
 let currentPlatform = platforms[0];
@@ -85,11 +44,7 @@ let targetPlatform = currentPlatform;
 platforms.sort((a, b) => a.y - b.y)
 console.log("platforms", platforms)
 
-function getRandomInt(min, max) {
-  min = Math.ceil(min);
-  max = Math.floor(max);
-  return Math.floor(Math.random() * (max - min)) + min;
-}
+
 
 function onKeydown(e) {
 
@@ -130,18 +85,38 @@ function onKeyup(e) {
 }
 
 let lastTimestamp = 0;
-let onPlatform = false;
+let remainingTime = 10000;
 
 function render(currentTimestamp) {
   const elapsed = currentTimestamp - lastTimestamp;
   lastTimestamp = currentTimestamp;
+  remainingTime -= elapsed; 
+
+  if (remainingTime < 0) {
+    ctx.font = '100px Verdana';
+    ctx.textAlign = "center";
+    let textMetrics = ctx.measureText('TIMEOUT!')
+    let textHeight = textMetrics.fontBoundingBoxAscent - textMetrics.fontBoundingBoxDescent
+    let textWidth = textMetrics.width;
+    
+    let x = canvas.width/2;
+    let y = canvas.height/2;
+    
+    ctx.fillStyle = "#080808";
+    ctx.fillRect(x - textWidth / 2 - 20, y - textHeight - 20,textWidth + 40, textHeight + 40);
+
+    ctx.fillStyle = "#9c1c13";
+    ctx.fillText('TIMEOUT!', x, y);
+
+    return;
+  }
 
   if (y > canvas.height) {
-    platforms = generatePlatforms();
+    platforms = generatePlatforms(GROUND, canvas.width, canvas.height, ++level);
     currentPlatform = platforms[0];
     targetPlatform = platforms[0];
     y = currentPlatform.y;
-    level++;
+    remainingTime = 10000;
   }
 
   if (holdRight) {
@@ -155,13 +130,17 @@ function render(currentTimestamp) {
   }
 
   if (!holdRight && !holdLeft) {
-    if (currentPlatform)
-      horizontalVelocity = horizontalVelocity * currentPlatform.friction;
+    if (currentPlatform) 
+      horizontalVelocity = horizontalVelocity * currentPlatform.type.friction;
     else
       horizontalVelocity = horizontalVelocity * 0.9;
   }
 
   x += horizontalVelocity * elapsed;
+
+  // must move along with the moving platform
+  if (currentPlatform) 
+    x += currentPlatform.velocity * elapsed;
 
   // stop if the h-acceleration is under a certain threshold
   if (Math.abs(horizontalVelocity) < 0.001) horizontalVelocity = 0;
@@ -192,7 +171,7 @@ function render(currentTimestamp) {
 
   // find the current ground
   for (const platform of platforms) {
-    if (x >= platform.x1 && x <= platform.x2) {
+    if (x >= platform.x && x <= (platform.x + platform.width)) {
       if (y >= platform.y) {
         targetPlatform = platform;
       }
@@ -209,8 +188,19 @@ function render(currentTimestamp) {
     horizontalVelocity = -horizontalVelocity;
   }
 
-  ctx.fillStyle = currentPlatform && currentPlatform.lava ? "#380000" : "black";
+  ctx.fillStyle = currentPlatform && currentPlatform.type == PlatformType.LAVA ? "#380000" : "black";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // render platforms
+  platforms.forEach(platform => renderPlatform(platform, ctx));
+
+  platforms.forEach(platform => {
+    platform.x = platform.x + (platform.velocity * elapsed);
+    if(platform.x + platform.width > canvas.width)
+      platform.velocity = -platform.velocity;
+    if(platform.x < 0)
+      platform.velocity = -platform.velocity;
+  })
 
   // cube rect
   ctx.beginPath();
@@ -225,24 +215,14 @@ function render(currentTimestamp) {
   ctx.fillStyle = 'green';
   ctx.fillRect(x-14, canvas.height-y-28, 28, 28);
 
-  // draw the platforms
-  platforms.forEach((platform) => {
-    ctx.beginPath();
-    ctx.lineWidth = platform.thickness;
-    ctx.strokeStyle = platform.iced ? "#64c9f9" : "white";
-    ctx.strokeStyle = platform.lava ? "red" : ctx.strokeStyle;
-    ctx.moveTo(platform.x1, canvas.height - platform.y);
-    ctx.lineTo(platform.x2, canvas.height - platform.y);
-    ctx.stroke();
-  });
-
   // update status panel
   status.innerHTML = 
     "h-velocity: " +Math.round(horizontalVelocity*1000)/1000 + "<br/>" +
     "v-velocity: " +Math.round(verticalVelocity*1000)/1000 + "<br/>" +
     "x: " + Math.round(x) + "<br/> " + 
     "y: " + Math.round(y) + "<br/> " +
-    "LEVEL: " + level + "<br/> ";
+    "LEVEL: " + level + "<br/> " +
+    "TIME: " + Math.round(remainingTime/1000)  + "<br/> ";
 
   window.requestAnimationFrame(render);
 }
